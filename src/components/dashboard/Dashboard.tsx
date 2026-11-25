@@ -158,8 +158,8 @@ export const Dashboard: React.FC = () => {
     }
   }, [applyDisplayOrdering]);
 
-  const fetchAllUsage = useCallback(async () => {
-    setLoading(true);
+  const fetchAllUsage = useCallback(async (showLoader = true) => {
+    if (showLoader) setLoading(true);
     try {
       const latestData = await apiService.fetchLatest();
       const normalized = normalizeUsagePayload(latestData);
@@ -167,14 +167,36 @@ export const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch usage:', error);
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   }, [applyDisplayOrdering]);
 
   useEffect(() => {
-    void fetchAllUsage();
+    let reading = false;
+    const readLatest = async (showLoader: boolean) => {
+      if (reading) return;
+      reading = true;
+      try {
+        await fetchAllUsage(showLoader);
+      } finally {
+        reading = false;
+      }
+    };
+    void readLatest(true);
     void loadCapabilities();
-  }, [fetchAllUsage, loadCapabilities]);
+    if (runtimeRole !== 'normal') return;
+
+    // The server's scheduler collects provider data. Viewers only read its cache.
+    const readWhenVisible = () => {
+      if (!document.hidden) void readLatest(false);
+    };
+    const timer = window.setInterval(readWhenVisible, 60000);
+    document.addEventListener('visibilitychange', readWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', readWhenVisible);
+    };
+  }, [fetchAllUsage, loadCapabilities, runtimeRole]);
 
   const persistOrder = useCallback(async (ids: string[], previousOrder: string[]) => {
     if (!ids.length) return;
