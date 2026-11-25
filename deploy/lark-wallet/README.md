@@ -2,6 +2,19 @@
 
 Compose starts the dashboard on the VPS loopback interface, port 3186. The optional worker reads AIMeter's subscription export every 60 seconds. Each provider controls its own upstream refresh interval. Configure accounts through AIMeter's private admin interface. Gemini web subscription limits require a separate verified data source. The Antigravity adapter reports a different quota.
 
+## Display the native dashboard in Base
+
+The optional viewer exposes the normal AIMeter dashboard on loopback port 3187. It uses the existing viewer password and allows the native dashboard to read cached usage once a minute while visible. The AIMeter scheduler collects fresh data at the configured provider intervals. A dashboard with no configured providers has no live measurements.
+
+Set `VIEWER_ORIGIN` to the HTTPS origin and `VIEWER_FRAME_ANCESTORS` to the space-separated HTTPS origins of the Lark tenant and the dashboard extension. Use a private environment file on the VPS. Start the viewer alongside AIMeter:
+
+```sh
+docker compose --env-file /etc/aiking-aimeter/service.env --env-file /etc/aiking-aimeter/viewer.env \
+  -f compose.yaml -f compose.viewer.yaml up -d aimeter wallet-viewer
+```
+
+Route the viewer hostname to `http://127.0.0.1:3187` using the existing TLS proxy. In the Base dashboard add **Add Block → Extensions → More → Embeds** (Lark Technologies), then enter the HTTPS URL. Log in as a viewer inside the embedded page. Cookies are partitioned, so a login in another tab may be separate. Manage provider connections through the private admin interface on port 3186. The embedded view works without the wallet-sync service or Lark record API access.
+
 ## Server configuration
 
 Keep credentials outside the repository. Create a private environment file for Compose with a random 32-character `AIMETER_ENDPOINT_SECRET` before the first start. From this directory run:
