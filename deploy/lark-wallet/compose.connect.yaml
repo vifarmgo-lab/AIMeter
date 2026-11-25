@@ -9,8 +9,7 @@ services:
     environment:
       CONNECT_ORIGIN: ${VIEWER_ORIGIN:?configure the HTTPS dashboard origin}
       CONNECT_EMAIL: ${CONNECT_EMAIL:?configure the allowed email}
-      ACCESS_ISSUER: ${ACCESS_ISSUER:?configure the team issuer}
-      ACCESS_AUDIENCE: ${ACCESS_AUDIENCE:?configure the protected application audience}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?configure the wallet web client}
     volumes:
       - /etc/aiking-aimeter/connect/admin:/run/secrets/aimeter_admin:ro
     read_only: true

@@ -1,29 +1,41 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateKeyPairSync, sign } from 'node:crypto';
-import { cloudflareAccess } from './access.mjs';
+import { generateKeyPair, SignJWT } from 'jose';
+import { googleAccess } from './access.mjs';
 import { createGateway, supportedRoute, validCreate } from './gateway.mjs';
 import { Readable } from 'node:stream';
 
-test('Access requires a current application token for the allowed mailbox', async () => {
-  const issuer = 'https://example.cloudflareaccess.com';
-  const audience = 'a'.repeat(64);
-  const email = 'owner@example.org';
-  const time = 2000000000;
-  const { publicKey, privateKey } = generateKeyPairSync('rsa', {modulusLength:2048});
-  const jwk = {...publicKey.export({format:'jwk'}),kid:'test'};
-  const permitted = cloudflareAccess({issuer,audience,email,now:() => time * 1000,
-    fetchImpl: async () => Response.json({keys:[jwk]})});
-  function request(change) {
-    const claims = {iss:issuer,aud:[audience],email,exp:time+60,...change};
-    const encoded = [{alg:'RS256',kid:'test'},claims].map(v => Buffer.from(JSON.stringify(v)).toString('base64url')).join('.');
-    return {headers:{'cf-access-jwt-assertion': encoded + '.' + sign('RSA-SHA256',Buffer.from(encoded),privateKey).toString('base64url')}};
+test('Google login binds the allowed verified address to this client, browser and one-time challenge', async () => {
+  const {publicKey,privateKey} = await generateKeyPair('RS256');
+  const clientId='123-test.apps.googleusercontent.com';
+  const email='owner@gmail.com';
+  const origin='https://wallet.example';
+  const handle=googleAccess({clientId,email,origin,keys:publicKey});
+  function response(){
+    return {headers:{},status:200,setHeader(k,v){this.headers[k]=v;},writeHead(n){this.status=n;},end(b){this.body=b;}};
   }
-  assert.equal(await permitted(request({})),true);
-  for (const change of [{aud:['other']},{iss:'https://elsewhere.example'},{email:'another@example.org'},{exp:time},{nbf:time+60}]) {
-    assert.equal(await permitted(request(change)),false);
+  const page=response();
+  assert.equal(await handle({method:'GET',url:'/connect',headers:{}},page),false);
+  const nonce=page.body.match(/data-nonce="([^"]+)"/)[1];
+  const cookie=page.headers['set-cookie'].split(';')[0];
+  async function send(changes, browserCookie=cookie) {
+    const credential=await new SignJWT({email,email_verified:true,nonce,...changes}).setProtectedHeader({alg:'RS256'})
+      .setIssuer('https://accounts.google.com').setAudience(clientId).setSubject('sample').setIssuedAt().setExpirationTime('5m').sign(privateKey);
+    const req=Readable.from([Buffer.from(JSON.stringify({credential}))]);
+    Object.assign(req,{method:'POST',url:'/connect/sign-in',headers:{cookie:browserCookie,origin,'content-type':'application/json'}});
+    const res=response();await handle(req,res);return res;
   }
-  assert.equal(await permitted({headers:{}}),false);
+  assert.equal((await send({email:'other@gmail.com'})).status,403);
+  assert.equal((await send({email_verified:false})).status,403);
+  assert.equal((await send({nonce:'different'})).status,403);
+  assert.equal((await send({},'')).status,403);
+  const accepted=await send({});
+  assert.equal(accepted.status,204);
+  const session=accepted.headers['set-cookie'][1].split(';')[0];
+  assert.equal(await handle({method:'GET',url:'/connect',headers:{cookie:session}},response()),true);
+  assert.equal((await send({})).status,403);
+  const blocked=response();await handle({method:'GET',url:'/connect/api/providers',headers:{}},blocked);
+  assert.equal(blocked.status,403);
 });
 
 test('the account portal only exposes the native add workflow', () => {

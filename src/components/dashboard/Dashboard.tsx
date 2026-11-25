@@ -497,6 +497,11 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-3">
+          {!canCreate && document.querySelector('meta[name="aimeter-connect"][content="/connect"]') && (
+            <a href="/connect" target="_blank" rel="noopener noreferrer" className="btn-primary h-10 w-full justify-center px-3 sm:h-auto sm:w-auto sm:px-5">
+              Thêm tài khoản
+            </a>
+          )}
           {canCreate && (
           <button
             onClick={handleAddProvider}

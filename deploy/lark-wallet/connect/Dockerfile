@@ -7,6 +7,7 @@ RUN cp deploy/lark-wallet/connect/index.html index.html && AIMETER_API_URL=/conn
 
 FROM node:22-alpine
 WORKDIR /portal
+RUN npm install --no-save --ignore-scripts --no-audit --no-fund jose@6.2.12
 COPY --from=build /portal-web/index.html ./web/index.html
 COPY --from=build /portal-web/assets ./web/assets
 COPY deploy/lark-wallet/connect/server.mjs deploy/lark-wallet/connect/access.mjs deploy/lark-wallet/connect/gateway.mjs ./

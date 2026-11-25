@@ -38,6 +38,8 @@ server {
         if ($viewer_allowed = 0) { return 404; }
         if ($viewer_origin_ok = 0) { return 403; }
         proxy_pass_request_headers off;
+        proxy_set_header Accept-Encoding "";
+        sub_filter '</head>' '<meta name="aimeter-connect" content="/connect"></head>';
         proxy_set_header Host aimeter;
         proxy_set_header Content-Type $content_type;
         proxy_set_header Cookie "aimeter_normal_session=$cookie_aimeter_normal_session";
