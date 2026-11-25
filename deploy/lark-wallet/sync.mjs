@@ -83,9 +83,13 @@ export function planWrites(rows, records) {
 
 async function request(url, options = {}) {
   const res = await fetch(url, {...options, redirect:'error', signal:AbortSignal.timeout(20000)});
-  if (!res.ok) throw Error('HTTP ' + res.status);
-  const data = await res.json();
-  if (data.code !== undefined && data.code !== 0) throw Error('Lark API ' + data.code);
+  const data = await res.json().catch(() => null);
+  if (data?.code !== undefined && data.code !== 0) {
+    const error = new Error('Lark API ' + data.code + ' (HTTP ' + res.status + ')');
+    error.code = data.code;
+    throw error;
+  }
+  if (!res.ok || !data) throw Error('Invalid API response (HTTP ' + res.status + ')');
   return data;
 }
 
@@ -173,8 +177,9 @@ async function main() {
   const secret = required('AIMETER_ENDPOINT_SECRET');
   const interval = Number(process.env.WALLET_SYNC_SECONDS || 60);
   if (!Number.isSafeInteger(interval) || interval < 10) throw Error('Invalid WALLET_SYNC_SECONDS');
-  let previous, reconcileAt = 0, schema, failures = 0;
+  let previous, reconcileAt = 0, schema, accounts, accountsExpire = 0, failures = 0;
   do {
+    let pauseSeconds = interval;
     try {
       const result = await request('http://aimeter:3000/api/endpoint/subscriptions?format=json&pretty=false', {
         headers:{'x-aimeter-endpoint-secret':secret}
@@ -182,8 +187,15 @@ async function main() {
       if (!result.success || !Array.isArray(result.providers)) throw Error('Invalid AIMeter export');
       const signature = JSON.stringify(result.providers.map(p=>[p.id,p.name,p.provider,p.updatedAt,p.progress,p.code]));
       if (signature !== previous || Date.now() >= reconcileAt) {
-        schema ??= await wallet.schema();
-        const {rows,unmapped,unavailable} = rowsFrom(result.providers, await wallet.accounts(schema), wallet.bindings);
+        const hasUsage = result.providers.some(p => p.progress?.length && Number.isSafeInteger(p.updatedAt) && p.updatedAt > 0);
+        if (hasUsage && (!accounts || Date.now() >= accountsExpire)) {
+          schema ??= await wallet.schema();
+          accounts = await wallet.accounts(schema);
+          accountsExpire = Date.now() + 30*60*1000;
+        }
+        const {rows,unmapped,unavailable} = hasUsage
+          ? rowsFrom(result.providers, accounts, wallet.bindings)
+          : {rows:new Map(), unmapped:0, unavailable:result.providers.length};
         const changes = planWrites(rows, rows.size ? await wallet.list(wallet.table,'records',names) : []);
         if (!dry) await wallet.write(changes);
         console.log(JSON.stringify({dry,providers:result.providers.length,windows:rows.size,unmapped,unavailable,creates:changes.creates.length,updates:changes.updates.length}));
@@ -194,9 +206,11 @@ async function main() {
     } catch (err) {
       if (once) throw err;
       failures++;
+      pauseSeconds = err.code === 99991403 ? 86400 : Math.min(interval * 2**Math.min(failures,4), Math.max(interval,900));
       console.error('Sync failed:',err.message);
+      if (err.code === 99991403) console.error('Monthly Lark quota exhausted. Retrying in 24 hours.');
     }
-    if (!once) await delay(Math.min(interval * 2**Math.min(failures,4), Math.max(interval,900))*1000);
+    if (!once) await delay(pauseSeconds*1000);
   } while (!once);
 }
 
