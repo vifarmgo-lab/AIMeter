@@ -1,0 +1,20 @@
+services:
+  wallet-connect:
+    build:
+      context: ../..
+      dockerfile: deploy/lark-wallet/connect/Dockerfile
+    ports:
+      - "127.0.0.1:3188:8080"
+    restart: unless-stopped
+    environment:
+      CONNECT_ORIGIN: ${VIEWER_ORIGIN:?configure the HTTPS dashboard origin}
+      CONNECT_EMAIL: ${CONNECT_EMAIL:?configure the allowed email}
+      ACCESS_ISSUER: ${ACCESS_ISSUER:?configure the team issuer}
+      ACCESS_AUDIENCE: ${ACCESS_AUDIENCE:?configure the protected application audience}
+    volumes:
+      - /etc/aiking-aimeter/connect/admin:/run/secrets/aimeter_admin:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      options: { max-size: "5m", max-file: "2" }
