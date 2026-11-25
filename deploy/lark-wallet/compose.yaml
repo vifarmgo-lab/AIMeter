@@ -1,0 +1,44 @@
+name: aiking-aimeter
+services:
+  aimeter:
+    image: aiking-aimeter:wallet
+    build:
+      context: ../..
+      dockerfile: deploy/container/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3186:3000"
+    environment:
+      AIMETER_DATABASE_ENGINE: sqlite
+      AIMETER_DATABASE_CONNECTION: /aimeter/db/aimeter.db
+      AIMETER_RUNTIME_MODE: node
+      AIMETER_SERVER_PORT: "3000"
+      AIMETER_BACKEND_PORT: "3001"
+      AIMETER_SERVER_PROTOCOL: http
+      AIMETER_ENDPOINT_SECRET: ${AIMETER_ENDPOINT_SECRET:?configure private env file}
+    volumes:
+      - aimeter-db:/aimeter/db
+      - aimeter-log:/aimeter/log
+    logging:
+      options: { max-size: "10m", max-file: "3" }
+  wallet-sync:
+    image: aiking-aimeter:wallet
+    profiles: ["sync"]
+    restart: unless-stopped
+    depends_on:
+      aimeter: { condition: service_healthy }
+    entrypoint: ["node", "/wallet/sync.mjs"]
+    user: node
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ${WALLET_ENV_FILE:-/etc/aiking-aimeter/wallet.env}
+    environment:
+      AIMETER_ENDPOINT_SECRET: ${AIMETER_ENDPOINT_SECRET:?configure private env file}
+    volumes:
+      - ./sync.mjs:/wallet/sync.mjs:ro
+    logging:
+      options: { max-size: "10m", max-file: "3" }
+volumes:
+  aimeter-db:
+  aimeter-log:
