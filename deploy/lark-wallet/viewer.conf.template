@@ -1,0 +1,54 @@
+# This virtual host serves the existing AIMeter frontend through a TLS proxy.
+# Only the normal-role session is ever forwarded to the private application.
+map "$request_method:$uri" $viewer_allowed {
+    default 0;
+    "~^(GET|HEAD):/(|history|login)$" 1;
+    "~^(GET|HEAD):/(assets|img|providers)/[A-Za-z0-9_./-]+\.(js|mjs|css|svg|png|jpg|jpeg|webp|ico|woff2?|ttf)$" 1;
+    "~^(GET|HEAD):/api/(auth/normal/status|system/capabilities|providers|history)$" 1;
+    "~^(GET|HEAD):/api/providers/[A-Za-z0-9_-]+/history$" 1;
+    "POST:/api/auth/normal/verify" 1;
+    "POST:/api/auth/normal/logout" 1;
+    "POST:/api/proxy/latest" 1;
+}
+
+map "$request_method:$http_origin" $viewer_origin_ok {
+    default 0;
+    "~^(GET|HEAD):" 1;
+    "POST:${VIEWER_ORIGIN}" 1;
+}
+
+server {
+    listen 8080;
+    server_name _;
+    access_log off;
+    client_max_body_size 8k;
+    resolver 127.0.0.11 valid=30s ipv6=off;
+    set $upstream http://aimeter:3000;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header Cache-Control "private, no-store" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors ${VIEWER_FRAME_ANCESTORS}" always;
+
+    location = /api/entry-context {
+        default_type application/json;
+        return 200 '{"success":true,"data":{"role":"normal","basePath":"/","invalidAdminPath":false}}';
+    }
+    location / {
+        if ($viewer_allowed = 0) { return 404; }
+        if ($viewer_origin_ok = 0) { return 403; }
+        proxy_pass_request_headers off;
+        proxy_set_header Host aimeter;
+        proxy_set_header Content-Type $content_type;
+        proxy_set_header Cookie "aimeter_normal_session=$cookie_aimeter_normal_session";
+        proxy_set_header X-Aimeter-Role normal;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_hide_header Cache-Control;
+        proxy_hide_header Referrer-Policy;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_cookie_flags aimeter_normal_session secure httponly samesite=none;
+        proxy_cookie_path / "/; Partitioned";
+        proxy_pass $upstream$uri$is_args$args;
+    }
+}
