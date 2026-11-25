@@ -6,6 +6,12 @@ services:
       context: ../..
       dockerfile: deploy/container/Dockerfile
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     ports:
       - "127.0.0.1:3186:3000"
     environment:
