@@ -19,6 +19,8 @@ interface ProviderModalProps {
   onSuccess: () => void;
   editConfig?: ProviderConfig & { id?: string };
   availableProgressItems?: string[];
+  initialProvider?: UsageProvider;
+  initialName?: string;
 }
 
 interface CopilotAuthState {
@@ -114,6 +116,8 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
   onSuccess,
   editConfig,
   availableProgressItems,
+  initialProvider,
+  initialName,
 }) => {
   const [selectedProvider, setSelectedProvider] = useState<UsageProvider | ''>(
     editConfig?.provider || ''
@@ -213,12 +217,12 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
 
   useEffect(() => {
     if (!isEditMode) {
-      setSelectedProvider('');
+      setSelectedProvider(initialProvider || '');
       setCredentialValue('');
-      setSelectedAuthType(AuthType.COOKIE);
-      setSelectedRegion('');
+      setSelectedAuthType(initialProvider ? getAdaptersForProvider(initialProvider)[0] : AuthType.COOKIE);
+      setSelectedRegion(initialProvider ? getRegionsForProvider(initialProvider)[0]?.id || '' : '');
       setRefreshInterval(5);
-      setName('');
+      setName(initialName?.trim() || (initialProvider ? PROVIDER_NAMES[initialProvider] : ''));
       setOpencodeWorkspaceId('');
       setDefaultProgressItem('');
       setError(null);
@@ -235,7 +239,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
       setAntigravityDisplayMode('pool');
       setAntigravityPoolConfigText('');
     }
-  }, [isOpen, isEditMode]);
+  }, [isOpen, isEditMode, initialProvider, initialName]);
 
   useEffect(() => {
     return () => {

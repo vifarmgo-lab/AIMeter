@@ -1,5 +1,26 @@
-.account-setup { max-width: 46rem; margin: 10vh auto; padding: 1.5rem; }
-.account-setup > h1 { font-weight: 650; font-size: clamp(1.6rem, 5vw, 2.4rem); line-height: 1.15; }
-.account-setup > p { margin: 1rem 0 1.5rem; }
-.account-setup > a { margin-left: 1.25rem; text-decoration: underline; }
-.add-account { padding: .65rem 1.15rem; background: #2355bf; color: white; border-radius: .5rem; font-weight: 600; }
+.account-setup {
+  max-width: 42rem;
+  margin: clamp(1.5rem, 9vh, 6rem) auto;
+  padding: 0 clamp(1rem, 4vw, 2rem);
+  color: var(--color-text-primary);
+}
+.account-setup h1 { margin: 1.45rem 0; font-size: clamp(1.75rem, 5vw, 2.35rem); font-weight: 650; line-height: 1.18; }
+.setup-back, .setup-alternate, .setup-links, .setup-options { color: var(--color-text-secondary); font-size: .9rem; }
+.setup-back:hover, .setup-alternate:hover, .setup-links a:hover, .setup-links button:hover, .setup-options:hover { text-decoration: underline; }
+.setup-card { padding: clamp(1.1rem, 4vw, 1.8rem); border-radius: 1rem; border: 1px solid var(--color-border-subtle); background: var(--color-surface); }
+.setup-card > label, .setup-step > label { display: block; font-weight: 600; }
+.setup-picker { display: flex; align-items: center; gap: .75rem; margin: .6rem 0 1rem; }
+.setup-picker > select { flex: 1; }
+.setup-picker select, .setup-step input, .setup-step select { min-width: 0; width: 100%; padding: .68rem .8rem; border: 1px solid var(--color-border-subtle); background: var(--color-bg-subtle); color: var(--color-text-primary); border-radius: .5rem; font: inherit; }
+.setup-form, .setup-step { display: grid; gap: .75rem; }
+.setup-form { gap: 1rem; }
+.setup-step p { color: var(--color-text-secondary); line-height: 1.55; font-size: .95rem; overflow-wrap: anywhere; }
+.setup-primary { display: inline-flex; justify-content: center; align-items: center; width: fit-content; min-height: 2.75rem; padding: .6rem 1.1rem; background: #2658bf; border-radius: .55rem; color: white; font-weight: 600; text-align: center; }
+.setup-primary:hover { background: #214fae; }
+.setup-primary:disabled { opacity: .5; cursor: default; }
+.setup-alternate, .setup-options { width: fit-content; text-align: left; }
+.setup-alternate { display: block; margin-top: 1rem; }
+.setup-links { display: flex; gap: .7rem 1rem; flex-wrap: wrap; align-items: center; }
+.setup-error { color: var(--color-error); font-size: .95rem; }
+.setup-card > p[role="status"] { margin-bottom: 1rem; }
+.account-setup :focus-visible { outline: 2px solid #7199f2; outline-offset: 3px; }
