@@ -28,7 +28,12 @@ services:
     logging:
       options: { max-size: "10m", max-file: "3" }
   wallet-sync:
-    image: aiking-aimeter:wallet
+    image: aiking-aimeter-wallet-sync:local
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM node:22-alpine
+        COPY --chmod=0444 sync.mjs /wallet/sync.mjs
     profiles: ["sync"]
     restart: unless-stopped
     depends_on:
@@ -41,8 +46,6 @@ services:
     env_file: ${WALLET_ENV_FILE:-/etc/aiking-aimeter/wallet.env}
     environment:
       AIMETER_ENDPOINT_SECRET: ${AIMETER_ENDPOINT_SECRET:?configure private env file}
-    volumes:
-      - ./sync.mjs:/wallet/sync.mjs:ro
     logging:
       options: { max-size: "10m", max-file: "3" }
 volumes:
