@@ -1,3 +1,4 @@
+import {randomBytes} from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
 const providers = new Set(['aliyun', 'antigravity', 'claude', 'codex', 'kimi', 'minimax', 'zai', 'copilot', 'openrouter', 'ollama', 'opencode', 'cursor']);
@@ -43,6 +44,7 @@ export async function readBody(req, maxBytes = 65536) {
 }
 
 export function createGateway({ origin, webDir, upstream, password, fetchImpl = fetch }) {
+  const tickets=new Map();
   let adminCookie;
   let loginPromise;
   async function login() {
@@ -76,6 +78,40 @@ export function createGateway({ origin, webDir, upstream, password, fetchImpl = 
   }
   return async function gateway(req, res) {
     const path = req.url;
+    if (req.method==='GET' && path==='/connect/dashboard') {
+      res.setHeader('content-type','text/html; charset=utf-8');
+      return res.end('<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard AIKING AI Wallet</title><main><p id="status" role="status">Đang mở dashboard AIKING AI Wallet…</p></main><script type="module" src="/connect/dashboard.js"></script></html>');
+    }
+    if (req.method==='GET' && path==='/connect/dashboard.js') {
+      res.setHeader('content-type','text/javascript; charset=utf-8');
+      return res.end(await readFile(new URL('./dashboard.mjs',import.meta.url)));
+    }
+    if (['/connect/viewer/ticket','/connect/viewer/redeem','/connect/viewer/local'].includes(path)) {
+      if(req.method!=='POST' || req.headers.origin!==origin || req.headers['content-type']!=='application/json') return reply(res,403,'Yêu cầu không hợp lệ.');
+      let body;
+      try {body=JSON.parse(await readBody(req,512));} catch {return reply(res,400,'Yêu cầu không hợp lệ.');}
+      const now=Date.now();
+      if(path==='/connect/viewer/ticket') {
+        for (const [key,expiry] of tickets) if(expiry<=now)tickets.delete(key);
+        if(tickets.size>=128)return reply(res,429,'Thử lại sau.');
+        const ticket=randomBytes(32).toString('base64url');
+        tickets.set(ticket,now+60000);
+        res.setHeader('content-type','application/json');
+        return res.end(JSON.stringify({ticket}));
+      }
+      if(path==='/connect/viewer/redeem') {
+        const expires=tickets.get(body?.ticket);
+        if(!expires || expires<=now)return reply(res,403,'Phiên mở dashboard đã hết hạn.');
+        tickets.delete(body.ticket);
+      }
+      const result=await forward('POST','/api/providers/wallet/viewer-session','{}');
+      const cookie=result.headers.getSetCookie().find(c=>c.startsWith('aimeter_normal_session='));
+      if(result.status!==204 || !cookie)return reply(res,503,'Chưa mở được dashboard.');
+      const pair=cookie.split(';')[0];
+      const age=cookie.match(/(?:^|; )Max-Age=(\d+)/i)?.[1] || '3600';
+      res.setHeader('set-cookie',pair+'; Path=/; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age='+age);
+      res.writeHead(204); return res.end();
+    }
     if (req.method === 'GET' && (path === '/connect' || path === '/connect/')) {
       res.setHeader('content-type','text/html; charset=utf-8');
       return res.end(await readFile(new URL('index.html', webDir)));

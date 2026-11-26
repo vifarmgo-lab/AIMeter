@@ -73,3 +73,27 @@ test('normal add requests keep native authentication on the server', async () =>
   assert.equal(res.status,200);
   assert.equal(calls.length,3);
 });
+
+test('a viewer grant is single use, same-origin, and forwards only the normal-role cookie',async()=>{
+  const origin='https://wallet.example';
+  const gateway=createGateway({origin,password:'fixture',upstream:'http://native',fetchImpl:async(url)=>{
+    if(url.pathname==='/api/auth/admin/verify')return new Response('{}',{headers:{'set-cookie':'aimeter_admin_session=internal; HttpOnly'}});
+    assert.equal(url.pathname,'/api/providers/wallet/viewer-session');
+    return new Response(null,{status:204,headers:{'set-cookie':'aimeter_normal_session=reader; HttpOnly; Max-Age=7200'}});
+  }});
+  async function invoke(route,body={},source=origin){
+    const req=Readable.from([Buffer.from(JSON.stringify(body))]);
+    Object.assign(req,{method:'POST',url:'/connect/viewer/'+route,headers:{origin:source,'content-type':'application/json'}});
+    const res={status:200,headers:{},setHeader(k,v){this.headers[k]=v;},writeHead(n){this.status=n;},end(value){this.body=value;}};
+    await gateway(req,res);return res;
+  }
+  assert.equal((await invoke('local',{},'https://elsewhere.example')).status,403);
+  assert.equal((await invoke('redeem',{ticket:'fake'})).status,403);
+  const {ticket}=JSON.parse((await invoke('ticket')).body);
+  assert.equal((await invoke('redeem',{ticket},'https://elsewhere.example')).status,403);
+  const res=await invoke('redeem',{ticket});
+  assert.equal(res.status,204);
+  assert.match(res.headers['set-cookie'],/^aimeter_normal_session=reader;.*HttpOnly; Secure; SameSite=None; Partitioned/);
+  assert.equal((await invoke('redeem',{ticket})).status,403);
+  assert.equal(supportedRoute('POST','/api/providers/wallet/viewer-session'),false);
+});

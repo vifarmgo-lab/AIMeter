@@ -142,8 +142,8 @@ function Account({platform,done,lock}:{platform:Platform;done:(v:string)=>void;l
 function App(){
   const [id,setId]=useState('codex'),[busy,setBusy]=useState(false),[saved,setSaved]=useState('');
   const platform=all.find(p=>p.id===id)!;
-  return <main className="account-setup"><a href="/" className="setup-back">← Dashboard AIMeter</a><h1>Thêm tài khoản AI</h1>
-    {saved?<section className="setup-card"><p role="status">{saved}</p><a className="setup-primary" href="/">Xem dashboard</a>
+  return <main className="account-setup"><a href="/connect/dashboard" className="setup-back">← Dashboard AIMeter</a><h1>Thêm tài khoản AI</h1>
+    {saved?<section className="setup-card"><p role="status">{saved}</p><a className="setup-primary" href="/connect/dashboard">Xem dashboard</a>
       <button className="setup-alternate" onClick={()=>setSaved('')}>Thêm tài khoản khác</button></section>:
     <section className="setup-card"><label htmlFor="platform">Anh muốn thêm tài khoản nào?</label>
       <div className="setup-picker"><select id="platform" disabled={busy} value={id} onChange={e=>setId(e.target.value)}>

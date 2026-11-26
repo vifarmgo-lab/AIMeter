@@ -17,7 +17,8 @@ createServer(async (req, res) => {
   res.setHeader('x-content-type-options','nosniff');
   res.setHeader('content-security-policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
   try {
-    if (!await authorize(req,res)) return;
+    // Redemption accepts only a fresh, one-use viewer grant from the authenticated popup.
+    if (req.url !== '/connect/viewer/redeem' && !await authorize(req,res)) return;
     await gateway(req,res);
   } catch {
     if (!res.headersSent) return reply(res,502,'AIMeter chưa xử lý được yêu cầu. Vui lòng thử lại.');

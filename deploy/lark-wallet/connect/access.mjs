@@ -48,7 +48,7 @@ const box=document.getElementById('signin');
 const msg=document.getElementById('message');
 google.accounts.id.initialize({client_id:box.dataset.client,nonce:box.dataset.nonce,login_hint:box.dataset.email,auto_select:false,callback:async function(result){
   try {const res=await fetch('/connect/sign-in',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credential:result.credential})});
-  if(res.ok){location.replace('/connect');return;} const detail=await res.json();msg.textContent=detail.error.message;}
+  if(res.ok){location.replace(location.pathname==='/connect/dashboard'?'/connect/dashboard':'/connect');return;} const detail=await res.json();msg.textContent=detail.error.message;}
   catch{msg.textContent='Chưa đăng nhập được. Anh tải lại trang để thử lại.';}
 }});
 google.accounts.id.renderButton(box,{type:'standard',theme:'outline',size:'large',text:'signin_with',locale:'vi'});
@@ -64,13 +64,13 @@ document.head.append(providerScript);`;
     if (req.method==='GET' && req.url==='/connect/sign-in.js') {
       res.setHeader('content-type','text/javascript; charset=utf-8'); res.end(browserScript); return false;
     }
-    if (req.method==='GET' && (req.url==='/connect' || req.url==='/connect/')) {
+    if (req.method==='GET' && (req.url==='/connect' || req.url==='/connect/' || req.url==='/connect/dashboard')) {
       const nonce=randomId();
       res.setHeader('set-cookie',cookie(stateCookie,ticket('nonce',nonce,600),600));
       res.setHeader('content-type','text/html; charset=utf-8');
       res.setHeader('content-security-policy',"default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; connect-src 'self' https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: https://*.googleusercontent.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
-      res.setHeader('cross-origin-opener-policy','same-origin-allow-popups');
-      res.end(`<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Thêm tài khoản · AIMeter</title><style>body{font:1rem/1.5 system-ui;color:#17202b;max-width:35rem;margin:12vh auto;padding:1.4rem}h1{font-size:2rem}#signin{margin:1.5rem 0}</style><h1>Thêm tài khoản vào AIMeter</h1><p>Dùng <strong>${email}</strong> để mở biểu mẫu thêm nền tảng AI.</p><div id="signin" data-email="${email}" data-client="${clientId}" data-nonce="${nonce}"></div><p id="message" role="status"></p><a href="/">Quay về dashboard</a><script src="/connect/sign-in.js"></script></html>`);
+      if(req.url!=='/connect/dashboard') res.setHeader('cross-origin-opener-policy','same-origin-allow-popups');
+      res.end(`<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Thêm tài khoản · AIMeter</title><style>body{font:1rem/1.5 system-ui;color:#17202b;max-width:35rem;margin:12vh auto;padding:1.4rem}h1{font-size:2rem}#signin{margin:1.5rem 0}</style><h1>${req.url==='/connect/dashboard'?'Xem dashboard AIKING AI Wallet':'Thêm tài khoản vào AIMeter'}</h1><p>Đăng nhập bằng <strong>${email}</strong>.</p><div id="signin" data-email="${email}" data-client="${clientId}" data-nonce="${nonce}"></div><p id="message" role="status"></p><a href="/">Quay về dashboard</a><script src="/connect/sign-in.js"></script></html>`);
       return false;
     }
     reply(res,403,'Cần đăng nhập trước khi thêm tài khoản.');

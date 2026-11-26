@@ -10,6 +10,6 @@ WORKDIR /portal
 RUN npm install --no-save --ignore-scripts --no-audit --no-fund jose@6.2.12
 COPY --from=build /portal-web/index.html ./web/index.html
 COPY --from=build /portal-web/assets ./web/assets
-COPY deploy/lark-wallet/connect/server.mjs deploy/lark-wallet/connect/access.mjs deploy/lark-wallet/connect/gateway.mjs ./
+COPY deploy/lark-wallet/connect/server.mjs deploy/lark-wallet/connect/access.mjs deploy/lark-wallet/connect/gateway.mjs deploy/lark-wallet/connect/dashboard.mjs ./
 USER node
 ENTRYPOINT ["node","server.mjs"]

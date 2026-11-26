@@ -2,11 +2,22 @@ import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { AuthType, UsageProvider as P, type UsageSnapshot } from '../../src/types/index.js';
 import { storage } from '../storage.js';
+import {issueSessionToken, setSessionCookie} from '../auth.js';
 import { requireAdminRole } from '../middleware/auth.js';
 import { newProfile, openClient, removeProfile, usageSnapshot } from '../services/codex-device.mjs';
 
 const router = Router();
 router.use((req, res, next) => { if (requireAdminRole(req, res)) next(); });
+
+// The Google-gated wallet gateway can delegate the existing read-only native role.
+router.post('/viewer-session',async (_req,res)=>{
+  try {
+    const hash=await storage.getPasswordHash('normal');
+    if (!hash) return res.sendStatus(503);
+    setSessionCookie('normal',res,issueSessionToken(hash));
+    return res.sendStatus(204);
+  } catch { return res.sendStatus(503); }
+});
 
 type State = 'pending' | 'saving' | 'connected' | 'expired' | 'failed';
 type Flow = { name:string; status:State; stop?:()=>void; quota:boolean };

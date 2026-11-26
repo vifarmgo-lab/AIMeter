@@ -3,6 +3,8 @@ import { apiService } from '../../services/ApiService';
 import { getRuntimeEntry } from '../../runtimeContext';
 import { AppTheme, applyTheme, getStoredTheme, persistTheme } from '../../theme';
 
+import {WalletViewerLogin} from './WalletViewerLogin';
+
 interface LockScreenProps {
   onUnlock: () => void;
 }
@@ -134,6 +136,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
     password: false,
     adminPassword: false,
   });
+  const [useWalletPassword,setUseWalletPassword]=useState(false);
   const [showLockConfirm, setShowLockConfirm] = useState(false);
   const [isLocking, setIsLocking] = useState(false);
 
@@ -352,13 +355,14 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
     );
   }
 
-  const title = mode === 'bootstrap'
+  const walletViewer = mode === 'check' && role === 'normal' && Boolean(document.querySelector('meta[name="aimeter-connect"][content="/connect"]'));
+  const title = walletViewer ? 'AIKING AI Wallet' : mode === 'bootstrap'
     ? 'Initial Setup'
     : mode === 'setup'
       ? (role === 'admin' ? 'Set Admin Password' : 'Set Password')
       : (role === 'admin' ? 'Enter Admin Password' : 'Enter Password');
 
-  const subtitle = mode === 'bootstrap'
+  const subtitle = walletViewer ? 'Đăng nhập để xem số dư và hạn mức tài khoản AI.' : mode === 'bootstrap'
     ? ''
     : mode === 'setup'
       ? (role === 'admin' ? 'Create a password to protect the admin console' : 'Create a password to protect your dashboard')
@@ -419,7 +423,9 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
           <p className="text-sm text-[var(--color-text-secondary)]">{subtitle}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {walletViewer && <WalletViewerLogin unlock={onUnlock}/>}
+        {walletViewer && <button type="button" className="mb-3 text-sm underline" aria-expanded={useWalletPassword} onClick={()=>setUseWalletPassword(!useWalletPassword)}>Dùng mật khẩu xem dashboard</button>}
+        <form hidden={walletViewer && !useWalletPassword} onSubmit={handleSubmit} className="space-y-4">
           {mode === 'bootstrap' ? (
             <>
               <div>
