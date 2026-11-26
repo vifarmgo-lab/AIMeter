@@ -13,7 +13,11 @@ import { isMockMode } from '../runtime.js';
 import { enrichProgressTitles } from '../utils/progressTitles.js';
 import { resolveMockDisplayNameForResponse } from '../mock/displayName.js';
 
+import walletRouter from './wallet.js';
+import { removeProfile } from '../services/codex-device.mjs';
+
 const router = Router();
+router.use('/wallet', walletRouter);
 
 interface ApiResponse<T> {
   success: boolean;
@@ -1003,7 +1007,9 @@ router.delete('/:id', async (req: Request, res: Response) => {
   if (!requireAdminRole(req, res)) return;
   try {
     const { id } = req.params;
+    const account = await storage.getProvider(id);
     await storage.deleteProvider(id);
+    if (account?.credentials.type === AuthType.DEVICE) await removeProfile(account.credentials.value).catch(() => {});
 
     res.json({
       success: true,

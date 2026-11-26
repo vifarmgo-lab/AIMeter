@@ -6,6 +6,8 @@ const regions = new Set(['minimax_global', 'minimax_cn', 'zai_global', 'zai_bigm
 const createFields = new Set(['provider', 'authType', 'credentials', 'name', 'refreshInterval', 'region', 'plan', 'claudeAuthMode', 'opencodeWorkspaceId', 'defaultProgressItem', 'attrs']);
 
 export function supportedRoute(method, path) {
+  if (method === 'GET' && /^\/api\/providers\/wallet\/device\/[a-f0-9-]{36}$/.test(path)) return true;
+  if (method === 'POST' && (['/api/providers/wallet/device/start','/api/providers/wallet/reading'].includes(path) || /^\/api\/providers\/wallet\/device\/[a-f0-9-]{36}\/cancel$/.test(path))) return true;
   if (method === 'GET') return /^\/api\/providers\/copilot\/auth\/status\/[a-zA-Z0-9_-]{1,128}$/.test(path);
   return method === 'POST' && (path === '/api/providers'
     || /^\/api\/providers\/(claude|codex|antigravity)\/oauth\/(generate-auth-url|exchange-code)$/.test(path)
@@ -99,6 +101,7 @@ export function createGateway({ origin, webDir, upstream, password, fetchImpl = 
       } catch { return reply(res,400,'Vui lòng kiểm tra lại thông tin tài khoản.'); }
     }
     const result = await forward(req.method, target, payload);
+    if (result.status === 204) { res.writeHead(204); return res.end(); }
     const data = await result.json();
     res.writeHead(result.status,{'content-type':'application/json; charset=utf-8'});
     res.end(JSON.stringify(data));

@@ -16,6 +16,8 @@ RUN apk add --no-cache python3 make g++ nginx openssl
 
 COPY package*.json ./
 RUN npm ci
+ARG WALLET_CODEX_VERSION
+RUN if [ -n "$WALLET_CODEX_VERSION" ]; then npm install -g --no-audit --no-fund "@openai/codex@${WALLET_CODEX_VERSION}" && codex --version && mkdir -p /aimeter/codex && chown node:node /aimeter/codex && chmod 700 /aimeter/codex; fi
 
 # Copy runtime-required files
 COPY server/ ./server/

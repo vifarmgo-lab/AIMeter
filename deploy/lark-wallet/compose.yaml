@@ -5,6 +5,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/container/Dockerfile
+      args: { WALLET_CODEX_VERSION: "0.172.0" }
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:3000/api/health"]
@@ -15,6 +16,7 @@ services:
     ports:
       - "127.0.0.1:3186:3000"
     environment:
+      AIMETER_CODEX_DEVICE_DIR: /aimeter/codex
       AIMETER_DATABASE_ENGINE: sqlite
       AIMETER_DATABASE_CONNECTION: /aimeter/db/aimeter.db
       AIMETER_RUNTIME_MODE: node
@@ -25,6 +27,7 @@ services:
     volumes:
       - aimeter-db:/aimeter/db
       - aimeter-log:/aimeter/log
+      - aimeter-codex:/aimeter/codex
     logging:
       options: { max-size: "10m", max-file: "3" }
   wallet-sync:
@@ -49,5 +52,6 @@ services:
     logging:
       options: { max-size: "10m", max-file: "3" }
 volumes:
+  aimeter-codex:
   aimeter-db:
   aimeter-log:

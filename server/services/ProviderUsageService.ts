@@ -6,6 +6,11 @@ import { runtimeConfig } from '../runtime.js';
 import { storage } from '../storage.js';
 
 export async function fetchUsageForProvider(config: ProviderConfig): Promise<UsageSnapshot> {
+  if (config.provider === UsageProvider.CODEX && config.credentials.type === AuthType.DEVICE) {
+    const {readCodexUsage} = await import('./codex-device.mjs');
+    return await readCodexUsage(config.credentials.value) as UsageSnapshot;
+  }
+  if (config.credentials.type === AuthType.MANUAL) throw new Error('Số liệu này do người dùng cập nhật.');
   if (isMockMode()) {
     const mockProvider = createMockProvider(config.provider, config);
     if (!mockProvider) {

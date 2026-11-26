@@ -1,6 +1,7 @@
 import { UsageProvider } from '../../types';
 
 export const PROVIDER_BASE_COLORS: Record<UsageProvider, string> = {
+  [UsageProvider.WALLET]: '#64748b',
   [UsageProvider.ALIYUN]: '#FF6A00',
   [UsageProvider.ANTIGRAVITY]: '#4285F4',
   [UsageProvider.CLAUDE]: '#D97757',

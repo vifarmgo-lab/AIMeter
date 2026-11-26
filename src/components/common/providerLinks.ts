@@ -1,6 +1,7 @@
 import { UsageProvider } from '../../types';
 
 const DEFAULT_PROVIDER_LINKS: Record<UsageProvider, string> = {
+  [UsageProvider.WALLET]: '/connect',
   [UsageProvider.ALIYUN]: 'https://bailian.console.aliyun.com/',
   [UsageProvider.ANTIGRAVITY]: 'https://antigravity.so/',
   [UsageProvider.CLAUDE]: 'https://claude.ai/',

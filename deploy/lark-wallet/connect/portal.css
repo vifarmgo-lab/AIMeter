@@ -24,3 +24,7 @@
 .setup-error { color: var(--color-error); font-size: .95rem; }
 .setup-card > p[role="status"] { margin-bottom: 1rem; }
 .account-setup :focus-visible { outline: 2px solid #7199f2; outline-offset: 3px; }
+.account-setup summary { cursor:pointer; color:var(--color-text-secondary); padding:.4rem 0; }
+.account-setup details[open] > summary { margin-bottom:.5rem; }
+.device-code { font:600 1.45rem ui-monospace,monospace; letter-spacing:.09em; user-select:all; }
+.setup-card:has(#platform:disabled) .mode-switch { display:none; }

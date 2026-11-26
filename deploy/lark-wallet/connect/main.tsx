@@ -1,155 +1,152 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import axios from 'axios';
-import { ProviderModal } from '../../../src/components/common/ProviderModal';
-import { ProviderLogo } from '../../../src/components/common/ProviderLogo';
-import { AuthType, UsageProvider as P, PROVIDER_NAMES, getRegionsForProvider, type Credential } from '../../../src/types';
+import { AuthType, UsageProvider as P, PROVIDER_NAMES } from '../../../src/types';
 import { apiService } from '../../../src/services/ApiService';
 import { credentialService } from '../../../src/services/CredentialService';
 import { initializeTheme } from '../../../src/theme';
-import { exchangeLogin, LoginInputError, loginProviders, usesLogin, type LoginLink } from './linked-login';
 import { CopilotLogin } from './copilot-login';
 import '../../../src/index.css';
 import './portal.css';
 
-const platforms = [P.CODEX, P.CLAUDE, P.OPENROUTER, ...Object.values(P).filter(p => p !== P.CODEX && p !== P.CLAUDE && p !== P.OPENROUTER).sort((a,b)=>PROVIDER_NAMES[a].localeCompare(PROVIDER_NAMES[b]))];
-const keyProviders = new Set([P.OPENROUTER, P.MINIMAX, P.ZAI]);
+type Platform = {id:string; label:string; page?:string; hint?:string};
+const wallet:Platform[] = [
+  {id:'codex',label:'ChatGPT / Codex', page:'https://chatgpt.com/codex/settings/usage',hint:'Theo dõi hạn mức Codex của từng tài khoản ChatGPT.'},
+  {id:'claude',label:'Claude',page:'https://claude.ai/settings/usage'},
+  {id:'google-ai',label:'Google AI Pro',page:'https://one.google.com/ai/credits',hint:'Xem credit AI trong Google One.'},
+  {id:'grok',label:'Grok',page:'https://grok.com/'},
+  {id:'runninghub',label:'RunningHub',page:'https://www.runninghub.ai/'},
+  {id:'openrouter',label:'OpenRouter',page:'https://openrouter.ai/activity'},
+  {id:'seedance',label:'Seedance',hint:'Mở ứng dụng nơi anh mua hoặc sử dụng Seedance để xem credit.'},
+  {id:'kalodata',label:'Kalodata',page:'https://www.kalodata.com/'},
+  {id:'copilot',label:'GitHub Copilot',page:'https://github.com/settings/copilot',hint:'Dùng cho tài khoản GitHub có Copilot.'},
+];
+const other:Platform[]=Object.values(P).filter(id=>id!==P.WALLET && !wallet.some(p=>p.id===id))
+  .map(id=>({id,label:PROVIDER_NAMES[id]}));
+const all=[...wallet,...other];
 
-function AccountForm({provider, onSave, onBusy}: {provider: P; onSave: (name: string) => void; onBusy: (busy: boolean) => void}) {
-  const isLink = usesLogin(provider);
-  const method = usesLogin(provider) ? loginProviders[provider] : undefined;
-  const isKey = keyProviders.has(provider);
-  const manual = !method && !isKey && provider !== P.COPILOT;
-  const regions = getRegionsForProvider(provider);
-  const [region, setRegion] = useState(regions[0]?.id || '');
-  const [alias, setAlias] = useState('');
-  const name = alias.trim() || PROVIDER_NAMES[provider];
-  const [options, setOptions] = useState(false);
-  const [full, setFull] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const saving = useRef(false);
-  const [error, setError] = useState('');
-  const [linkError, setLinkError] = useState(false);
-  const [link, setLink] = useState<LoginLink>();
-  const [generation, setGeneration] = useState(0);
-  const [opened, setOpened] = useState(false);
-  const [input, setInput] = useState('');
-  const confirmed = useRef<Credential>();
-  const [copilotId, setCopilotId] = useState('');
-  const aliasBox = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!method) return;
-    let active = true;
-    setLink(undefined); setLinkError(false);
-    method.start().then(value=>{if(active) setLink(value);},()=>{if(active) setLinkError(true);});
-    return () => {active = false;};
-  }, [method, generation]);
-
-  function newLink() {
-    setInput(''); setOpened(false); setError(''); confirmed.current = undefined;
-    setGeneration(v=>v+1);
-  }
-
-  async function save(event: React.FormEvent) {
-    event.preventDefault();
-    if (saving.current) return;
-    saving.current = true; setBusy(true); onBusy(true); setError('');
-    let exchanging = false;
-    try {
-      if (provider === P.COPILOT) {
-        if (!copilotId) return;
-        await apiService.completeCopilotAuth({tempCredentialId:copilotId,name,refreshInterval:5});
-      } else {
-        let credentials: Credential;
-        if (isLink) {
-          if (!link) return;
-          if (!confirmed.current) {
-            exchanging = true;
-            confirmed.current = await exchangeLogin(provider, link, input);
-            exchanging = false;
-            setInput('');
-          }
-          credentials = confirmed.current;
-        } else if (isKey && input.trim()) {
-          credentials = {type:AuthType.API_KEY,value:input.trim()};
-        } else return;
-        await credentialService.saveConfig(provider,{provider,name,credentials,refreshInterval:5,
-          region:region || undefined,claudeAuthMode:provider === P.CLAUDE ? 'oauth' : undefined});
-      }
-      confirmed.current = undefined; setInput(''); onSave(name);
-    } catch (e) {
-      const detail = axios.isAxiosError(e) ? e.response?.data?.error?.code : undefined;
-      if (detail === 'DUPLICATE_NAME') {
-        setOptions(true);setError('Tên này đã được dùng. Anh đổi tên hiển thị rồi bấm lưu lại.');
-        requestAnimationFrame(()=>aliasBox.current?.focus());
-      } else if (axios.isAxiosError(e) && [401,403].includes(e.response?.status || 0)) {
-        setError('Phiên AIMeter có thể đã hết hạn. Anh tải lại trang và đăng nhập lại.');
-      } else if (e instanceof LoginInputError) {
-        setError(e.message);
-      } else {
-        setError(exchanging ? 'Chưa xác nhận được kết quả. Anh kiểm tra nội dung vừa dán hoặc lấy liên kết mới.' : 'AIMeter chưa xác nhận được việc lưu. Anh kiểm tra dashboard trước khi thử lại.');
-      }
-    } finally {saving.current = false; setBusy(false); onBusy(false);}
-  }
-
-  const canSave = !busy && (isLink ? Boolean(confirmed.current || (link && opened && input.trim())) : provider === P.COPILOT ? Boolean(copilotId) : isKey && Boolean(input.trim()));
-  return <>
-    <form onSubmit={save} className="setup-form">
-      {method && <section className="setup-step">
-        <p>{method.hint}</p>
-        {!opened && (link ? <a className="setup-primary" href={link.authUrl} target="_blank" rel="noopener noreferrer" onClick={()=>setOpened(true)}>Đăng nhập {method.label} ↗</a>
-          : linkError ? <button className="setup-primary" type="button" onClick={newLink}>Thử tạo lại liên kết</button> : <p role="status">Đang chuẩn bị đăng nhập…</p>)}
-        {opened && !confirmed.current && <>
-          <label htmlFor="result">Kết quả đăng nhập</label>
-          <p id="result-hint">{method.finish}</p>
-          <input id="result" type="password" aria-describedby="result-hint" autoComplete="off" value={input} disabled={busy}
-            placeholder="Dán kết quả vào đây" onChange={e=>setInput(e.target.value)}/>
-          <div className="setup-links"><a href={link?.authUrl} target="_blank" rel="noopener noreferrer">Mở lại trang đăng nhập</a>
-          <button type="button" disabled={busy} onClick={newLink}>Lấy liên kết mới</button></div>
-        </>}
-        {confirmed.current && <p role="status">Đã xác nhận đăng nhập. Anh có thể thử lưu lại.</p>}
-      </section>}
-      {provider === P.COPILOT && <CopilotLogin onReady={setCopilotId}/>}
-      {isKey && <section className="setup-step">
-        <label htmlFor="api-key">Khóa API của {PROVIDER_NAMES[provider]}</label>
-        {provider === P.OPENROUTER && <p>Wallet chỉ dùng khóa có quyền đọc. Nếu chưa có loại khóa này, anh có thể chọn nền tảng khác.</p>}
-        <input type="password" autoComplete="off" id="api-key" value={input} disabled={busy} onChange={e=>setInput(e.target.value)} placeholder="Dán khóa API"/>
-      </section>}
-      {manual && <section className="setup-step"><p>AIMeter hiện chỉ hỗ trợ kết nối {PROVIDER_NAMES[provider]} thủ công.</p>
-        <button className="setup-primary" type="button" onClick={()=>setFull(true)}>Mở biểu mẫu {PROVIDER_NAMES[provider]}</button></section>}
-      {!manual && <>
-        <button type="button" className="setup-options" aria-expanded={options} aria-controls="account-options" disabled={busy} onClick={()=>setOptions(!options)}>
-          {options ? 'Ẩn tùy chọn' : 'Đổi tên hiển thị' + (regions.length ? ' hoặc khu vực' : '')}
-        </button>
-        {options && <div id="account-options" className="setup-step"><label htmlFor="nickname">Tên trên dashboard</label>
-          <input id="nickname" ref={aliasBox} maxLength={255} placeholder={PROVIDER_NAMES[provider]} value={alias} disabled={busy} onChange={e=>setAlias(e.target.value)} />
-          {regions.length>0 && <><label htmlFor="region">Khu vực tài khoản</label><select id="region" value={region} disabled={busy} onChange={e=>setRegion(e.target.value)}>
-            {regions.map(r=><option key={r.id} value={r.id}>{r.displayName}</option>)}</select></>}
-        </div>}
-        {(!isLink || opened) && <button className="setup-primary" type="submit" disabled={!canSave}>{busy ? 'Đang kết nối…' : 'Lưu tài khoản'}</button>}
-      </>}
-      {error && <p className="setup-error" role="alert">{error}</p>}
-    </form>
-    {!manual && <button className="setup-alternate" type="button" disabled={busy} onClick={()=>setFull(true)}>Biểu mẫu đầy đủ</button>}
-    {full && <ProviderModal isOpen initialProvider={provider} initialName={name} onClose={()=>setFull(false)} onSuccess={()=>onSave('')}/>}
-  </>;
+async function request(path:string, body?:unknown) {
+  const response=await fetch('/connect/api/providers/wallet/'+path,{
+    method:body===undefined?'GET':'POST',
+    ...(body===undefined?{}:{headers:{'content-type':'application/json'},body:JSON.stringify(body)}),
+  });
+  if (response.status===204) return {};
+  const data=await response.json().catch(()=>({}));
+  if (!response.ok) throw Error(data.message || (response.status===403?'Anh tải lại trang và đăng nhập Wallet bằng Google.':'Chưa thực hiện được. Anh thử lại nhé.'));
+  return data;
 }
 
-function AccountSetup() {
-  const [provider,setProvider] = useState<P>(P.CODEX);
-  const [busy,setBusy] = useState(false);
-  const [saved,setSaved] = useState<string|null>(null);
-  return <main className="account-setup"><a href="/" className="setup-back">← Dashboard AIMeter</a>
-    <h1>Thêm tài khoản AI</h1>
-    {saved!==null ? <section className="setup-card"><p role="status">{saved ? 'Đã thêm tài khoản ' + saved + '.' : 'Đã thêm tài khoản.'}</p>
-      <a className="setup-primary" href="/">Xem dashboard</a><button className="setup-alternate" onClick={()=>setSaved(null)}>Thêm tài khoản khác</button></section>
-    : <section className="setup-card"><label htmlFor="provider">Nền tảng</label>
-      <div className="setup-picker"><ProviderLogo provider={provider} size={30}/><select id="provider" value={provider} disabled={busy}
-        onChange={e=>setProvider(e.target.value as P)}>{platforms.map(p=><option key={p} value={p}>{PROVIDER_NAMES[p]}</option>)}</select></div>
-      <AccountForm key={provider} provider={provider} onBusy={setBusy} onSave={setSaved}/></section>}
-  </main>;
+function Codex({name,done,lock}:{name:string;done:(text:string)=>void;lock:(v:boolean)=>void}) {
+  const [flow,setFlow]=useState<{flowId:string;code:string;url:string}>();
+  const [pending,setPending]=useState(false);
+  const [error,setError]=useState('');
+  const [copied,setCopied]=useState(false);
+  async function start() {
+    setPending(true); lock(true); setError(''); setCopied(false);
+    try {setFlow(await request('device/start',{name}));}
+    catch(e){setError((e as Error).message);lock(false);}
+    finally {setPending(false);}
+  }
+  useEffect(()=>{
+    if(!flow) return;
+    let active=true; let timer:number;
+    async function check(){
+      try {
+        const result=await request('device/'+flow!.flowId);
+        if(!active) return;
+        if(result.status==='connected') {lock(false);done(result.quota?'Đã kết nối và nhận hạn mức Codex.':'Đã kết nối. AIMeter đang chờ số liệu hạn mức đầu tiên.');return;}
+        if(['expired','failed'].includes(result.status)){setFlow(undefined);lock(false);setError('Phiên xác nhận đã kết thúc. Anh có thể lấy mã mới.');return;}
+        setError('');
+      } catch(e){if(active)setError((e as Error).message);}
+      if(active) timer=window.setTimeout(check,3000);
+    }
+    timer=window.setTimeout(check,2500);
+    return ()=>{active=false;window.clearTimeout(timer);};
+  },[flow,done,lock]);
+  async function cancel(){if(!flow)return;try{await request('device/'+flow.flowId+'/cancel',{});setFlow(undefined);lock(false);}catch(e){setError((e as Error).message);}}
+  return <section className="setup-step">{flow ? <>
+    <p>Nhập mã này trên trang chính thức của OpenAI. Wallet sẽ tự lưu sau khi anh xác nhận.</p>
+    <div className="setup-links"><strong className="device-code">{flow.code}</strong>
+      <button onClick={async()=>{try{await navigator.clipboard.writeText(flow.code);setCopied(true);}catch{setError('Anh chọn mã và sao chép bằng tay.');}}}>{copied?'Đã sao chép':'Sao chép mã'}</button></div>
+    <a className="setup-primary" href={flow.url} target="_blank" rel="noreferrer">Mở OpenAI để xác nhận ↗</a>
+    <p role="status">Đang chờ OpenAI xác nhận…</p><button className="setup-options" onClick={cancel}>Hủy mã này</button>
+  </> : <button className="setup-primary" disabled={pending} onClick={start}>{pending?'Đang lấy mã…':'Kết nối ChatGPT bằng mã'}</button>}
+    <details><summary>Nếu OpenAI yêu cầu bật đăng nhập bằng mã</summary><p>Trong ChatGPT, mở Settings → Security và bật Device code authorization. Với gói Business, quản trị viên có thể cần bật tùy chọn này cho workspace.</p></details>
+    {error && <p role="alert" className="setup-error">{error}</p>}</section>;
 }
 
+function Reading({platform,name,done}:{platform:Platform;name:string;done:(v:string)=>void}){
+  const [unit,setUnit]=useState('percent');
+  const [used,setUsed]=useState(''), [total,setTotal]=useState('');
+  const [saving,setSaving]=useState(false), [error,setError]=useState('');
+  async function save(event:React.FormEvent){
+    event.preventDefault();setSaving(true);setError('');
+    try {await request('reading',{platform:platform.id,name,used:Number(used),total:unit==='percent'?100:Number(total)});done('Đã lưu số liệu tự nhập của '+name+'.');}
+    catch(e){setError((e as Error).message);}finally{setSaving(false);}
+  }
+  return <form className="setup-step" onSubmit={save}><p>Dashboard ghi thời điểm anh cập nhật. Lần sau chọn lại cùng tên để cập nhật số mới.</p>
+    <label htmlFor="unit">Trang tài khoản hiển thị gì?</label><select id="unit" value={unit} onChange={e=>{setUnit(e.target.value);setUsed('');setTotal('');}}>
+      <option value="percent">Phần trăm đã dùng</option><option value="count">Số đã dùng và tổng hạn mức</option></select>
+    <label htmlFor="used">{unit==='percent'?'Đã dùng (%)':'Số đã dùng'}</label>
+    <input id="used" type="number" min="0" max={unit==='percent'?100:total||undefined} step="any" value={used} required onChange={e=>setUsed(e.target.value)}/>
+    {unit==='count' && <><label htmlFor="total">Tổng hạn mức</label><input id="total" type="number" min="0" step="any" value={total} required onChange={e=>setTotal(e.target.value)}/></>}
+    <button className="setup-primary" disabled={saving}>{saving?'Đang lưu…':'Lưu số liệu'}</button>
+    {error && <p role="alert" className="setup-error">{error}</p>}</form>;
+}
+
+function Account({platform,done,lock}:{platform:Platform;done:(v:string)=>void;lock:(v:boolean)=>void}){
+  const [alias,setAlias]=useState(''), [key,setKey]=useState(''), [manual,setManual]=useState(false);
+  const [error,setError]=useState(''), [busy,setBusy]=useState(false);
+  const [copilot,setCopilot]=useState('');
+  const attempt=useRef('');
+  const name=alias.trim() || platform.label;
+  const automatic=['codex','copilot','openrouter'].includes(platform.id);
+  useEffect(()=>{
+    if(!copilot || attempt.current===copilot)return;
+    attempt.current=copilot;
+    void completeCopilot();
+  },[copilot]);
+  async function completeCopilot(){
+    setBusy(true);lock(true);setError('');
+    try {await apiService.completeCopilotAuth({tempCredentialId:copilot,name,refreshInterval:5});done('Đã kết nối '+name+'.');}
+    catch{setError('Chưa lưu được. Nếu đã có tài khoản trùng tên, anh đổi tên hiển thị rồi thử lại.');}
+    finally{setBusy(false);lock(false);}
+  }
+  async function saveKey(event:React.FormEvent){
+    event.preventDefault();setBusy(true);lock(true);setError('');
+    try{await credentialService.saveConfig(P.OPENROUTER,{provider:P.OPENROUTER,name,refreshInterval:5,credentials:{type:AuthType.API_KEY,value:key.trim()}});setKey('');done('Đã kết nối '+name+'.');}
+    catch{setError('Chưa đọc được số dư. Anh kiểm tra quyền đọc cấp tổ chức và tên tài khoản rồi thử lại.');}
+    finally{setBusy(false);lock(false);}
+  }
+  return <div className="setup-form">{platform.hint && <p>{platform.hint}</p>}
+    <details><summary>Đặt tên để phân biệt nhiều tài khoản</summary><div className="setup-step">
+      <label htmlFor="alias">Tên trên dashboard</label><input id="alias" maxLength={120} placeholder={platform.label} value={alias} disabled={busy} onChange={e=>setAlias(e.target.value)}/></div></details>
+    {automatic && !manual && (platform.id==='codex'?<Codex name={name} done={done} lock={lock}/>:platform.id==='copilot'?<>
+      <CopilotLogin onReady={setCopilot}/>{copilot && error && <button className="setup-primary" disabled={busy} onClick={completeCopilot}>Thử lưu lại</button>}</>:
+      <form className="setup-step" onSubmit={saveKey}><p>Trong OpenRouter, chọn <b>Read only</b> khi tạo khóa quản lý cấp tổ chức để đọc số dư.</p>
+        <a className="setup-options" href="https://openrouter.ai/settings/management-keys" target="_blank" rel="noreferrer">Mở trang tạo khóa OpenRouter ↗</a>
+        <label htmlFor="key">Khóa chỉ đọc</label><input id="key" type="password" required autoComplete="off" value={key} onChange={e=>setKey(e.target.value)}/>
+        <button className="setup-primary" disabled={busy}>{busy?'Đang kiểm tra…':'Kết nối OpenRouter'}</button></form>)}
+    {(!automatic || manual) && <section className="setup-step">
+      <p>{automatic?'Anh đang chọn cập nhật bằng tay.':'Wallet chưa tự lấy hạn mức của nền tảng này.'}</p>
+      {platform.page && <a className="setup-primary" href={platform.page} target="_blank" rel="noreferrer">Mở tài khoản {platform.label} ↗</a>}
+      <details open={manual || undefined}><summary>Ghi số liệu vào Wallet</summary><Reading platform={platform} name={name} done={done}/></details>
+    </section>}
+    {automatic && <button disabled={busy} className="setup-options mode-switch" onClick={()=>setManual(!manual)}>{manual?'Quay lại kết nối tự động':'Cập nhật bằng tay'}</button>}
+    {error && <p className="setup-error" role="alert">{error}</p>}
+  </div>;
+}
+
+function App(){
+  const [id,setId]=useState('codex'),[busy,setBusy]=useState(false),[saved,setSaved]=useState('');
+  const platform=all.find(p=>p.id===id)!;
+  return <main className="account-setup"><a href="/" className="setup-back">← Dashboard AIMeter</a><h1>Thêm tài khoản AI</h1>
+    {saved?<section className="setup-card"><p role="status">{saved}</p><a className="setup-primary" href="/">Xem dashboard</a>
+      <button className="setup-alternate" onClick={()=>setSaved('')}>Thêm tài khoản khác</button></section>:
+    <section className="setup-card"><label htmlFor="platform">Anh muốn thêm tài khoản nào?</label>
+      <div className="setup-picker"><select id="platform" disabled={busy} value={id} onChange={e=>setId(e.target.value)}>
+        <optgroup label="AIKING AI Wallet">{wallet.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</optgroup>
+        <optgroup label="Nền tảng khác">{other.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</optgroup></select></div>
+      <Account key={id} platform={platform} done={setSaved} lock={setBusy}/></section>}</main>;
+}
 initializeTheme();
-createRoot(document.getElementById('root')!).render(<AccountSetup />);
+createRoot(document.getElementById('root')!).render(<App/>);

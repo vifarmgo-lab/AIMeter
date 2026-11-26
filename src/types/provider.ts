@@ -1,5 +1,6 @@
 // Provider-related type definitions
 export enum UsageProvider {
+  WALLET = 'wallet',
   ALIYUN = 'aliyun',
   ANTIGRAVITY = 'antigravity',
   CLAUDE = 'claude',
@@ -26,6 +27,8 @@ export interface ProviderMeta {
 
 // Authentication types
 export enum AuthType {
+  DEVICE = 'device',
+  MANUAL = 'manual',
   COOKIE = 'cookie',
   API_KEY = 'api_key',
   OAUTH = 'oauth',
@@ -34,6 +37,7 @@ export enum AuthType {
 
 // Credential types
 export type Credential =
+  | { type: AuthType.DEVICE | AuthType.MANUAL; value: string }
   | { type: AuthType.COOKIE; value: string; source?: 'browser' | 'manual' }
   | { type: AuthType.API_KEY; value: string; keyPrefix?: string }
     | {
@@ -130,6 +134,7 @@ export function getRegionsForProvider(provider: UsageProvider): RegionMeta[] {
 
 // Provider name map
 export const PROVIDER_NAMES: Record<UsageProvider, string> = {
+  [UsageProvider.WALLET]: 'Wallet',
   [UsageProvider.ALIYUN]: 'Aliyun',
   [UsageProvider.ANTIGRAVITY]: 'Antigravity',
   [UsageProvider.CLAUDE]: 'Claude',
@@ -146,6 +151,7 @@ export const PROVIDER_NAMES: Record<UsageProvider, string> = {
 
 // Provider color map
 export const PROVIDER_COLORS: Record<UsageProvider, string> = {
+  [UsageProvider.WALLET]: '#64748b',
   [UsageProvider.ALIYUN]: '#FF6A00',
   [UsageProvider.ANTIGRAVITY]: '#4285F4',
   [UsageProvider.CLAUDE]: '#D97757',

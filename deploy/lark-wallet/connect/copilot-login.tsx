@@ -46,7 +46,7 @@ export function CopilotLogin({ onReady }: { onReady: (id: string) => void }) {
   },[flow,ready,onReady]);
 
   return <section className="setup-step">
-    {ready ? <p role="status">GitHub đã xác nhận. Anh có thể lưu tài khoản.</p> : flow ? <>
+    {ready ? <p role="status">GitHub đã xác nhận đăng nhập.</p> : flow ? <>
       <p>Nhập mã <strong>{flow.userCode}</strong> trên GitHub, rồi quay lại đây.</p>
       <a className="setup-primary" href={flow.verificationUri} target="_blank" rel="noopener noreferrer">Mở GitHub ↗</a>
       <p role="status">Đang chờ GitHub xác nhận…</p>

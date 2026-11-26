@@ -85,6 +85,11 @@ async function patchFetchStateSafe(providerId: string, patch: Record<string, unk
 }
 
 export async function refreshProviderWithProtection(provider: ProviderInstance): Promise<ProviderRefreshResult> {
+  if (provider.credentials.type === 'manual') {
+    const latest = await storage.getLatestUsage(provider.id);
+    return latest ? {ok:true, snapshot:buildSnapshotFromRecord(provider,latest), fromCache:true}
+      : {ok:false, statusCode:404, code:'FETCH_ERROR', message:'Chưa có số liệu do người dùng nhập.'};
+  }
   const now = Date.now();
   const attemptAt = Math.floor(now / 1000);
 
