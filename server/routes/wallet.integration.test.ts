@@ -43,6 +43,9 @@ test('wallet readings use actual SQLite and the normal dashboard read route', as
     const balance=await post('/read/latest',{});
     assert.match(JSON.stringify(balance.data), /"walletBalance":\{"value":9.5,"unit":"credit"\}/);
     assert.equal((await storage.listProviders()).length,1);
+    assert.equal((await post('/write/reading',{...item,balance:-0.11,unit:'USD'})).status,200);
+    assert.match(JSON.stringify((await post('/read/latest',{})).data), /"value":-0.11,"unit":"USD"/);
+    assert.equal((await post('/write/reading',{...item,balance:-1,unit:'credit'})).status,400);
   } finally {
     await new Promise<void>(resolve=>server.close(()=>resolve()));
     await rm(tmp,{recursive:true,force:true});

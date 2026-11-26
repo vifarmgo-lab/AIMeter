@@ -14,8 +14,8 @@ const wallet:Platform[] = [
   {id:'claude',label:'Claude',page:'https://claude.ai/settings/usage'},
   {id:'google-ai',label:'Google AI Pro',page:'https://one.google.com/ai/credits',hint:'Xem credit AI trong Google One.'},
   {id:'grok',label:'Grok',page:'https://grok.com/'},
-  {id:'runninghub',label:'RunningHub',page:'https://www.runninghub.ai/'},
-  {id:'openrouter',label:'OpenRouter',page:'https://openrouter.ai/activity'},
+  {id:'runninghub',label:'RunningHub',page:'https://www.runninghub.ai/user-center',hint:'Trong RunningHub, bấm Personal và xem số Available now ở Credits package.'},
+  {id:'openrouter',label:'OpenRouter',page:'https://openrouter.ai/settings/credits'},
   {id:'seedance',label:'Seedance',hint:'Mở ứng dụng nơi anh mua hoặc sử dụng Seedance để xem credit.'},
   {id:'kalodata',label:'Kalodata',page:'https://www.kalodata.com/'},
   {id:'copilot',label:'GitHub Copilot',page:'https://github.com/settings/copilot',hint:'Dùng cho tài khoản GitHub có Copilot.'},
@@ -88,7 +88,7 @@ function Reading({platform,name,done}:{platform:Platform;name:string;done:(v:str
     <label htmlFor="unit">Trang tài khoản hiển thị gì?</label><select id="unit" value={unit} onChange={e=>{setUnit(e.target.value);setUsed('');setTotal('');}}>
       <option value="balance">Số dư còn lại</option><option value="percent">Phần trăm đã dùng</option><option value="count">Số đã dùng và tổng hạn mức</option></select>
     <label htmlFor="used">{unit==='balance'?'Số còn lại':unit==='percent'?'Đã dùng (%)':'Số đã dùng'}</label>
-    <input id="used" type="number" min="0" max={unit==='percent'?100:total||undefined} step="any" value={used} required onChange={e=>setUsed(e.target.value)}/>
+    <input id="used" type="number" min={unit==='balance' && balanceUnit==='USD'?undefined:0} max={unit==='percent'?100:total||undefined} step="any" value={used} required onChange={e=>setUsed(e.target.value)}/>
     {unit==='balance' && <><label htmlFor="balance-unit">Đơn vị</label><select id="balance-unit" value={balanceUnit} onChange={e=>setBalanceUnit(e.target.value)}>{['credit','USD','lượt'].map(v=><option key={v}>{v}</option>)}</select></>}
     {unit==='count' && <><label htmlFor="total">Tổng hạn mức</label><input id="total" type="number" min="0" step="any" value={total} required onChange={e=>setTotal(e.target.value)}/></>}
     <button className="setup-primary" disabled={saving}>{saving?'Đang lưu…':'Lưu số liệu'}</button>

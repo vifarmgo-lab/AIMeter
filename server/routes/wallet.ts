@@ -100,7 +100,7 @@ router.post('/reading', async (req,res)=>{
   const {platform, used, total, balance, unit} = req.body || {};
   const label=nameOf(req.body?.name);
   const balanceOnly = balance !== undefined;
-  const valid = balanceOnly ? Number.isFinite(balance) && balance>=0 && ['credit','USD','lượt'].includes(unit)
+  const valid = balanceOnly ? Number.isFinite(balance) && (balance>=0 || unit==='USD') && ['credit','USD','lượt'].includes(unit)
     : Number.isFinite(used) && Number.isFinite(total) && used>=0 && total>0 && used<=total;
   if (!platforms.has(platform) || !label || !valid)
     return res.status(400).json({message:'Kiểm tra lại tên, số đã dùng và tổng hạn mức.'});

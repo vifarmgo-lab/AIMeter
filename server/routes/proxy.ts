@@ -13,7 +13,7 @@ const router = Router();
 function sanitizeViewerIdentity(identity: Record<string, unknown> | undefined): DashboardProviderData['identity'] | undefined {
   const plan = typeof identity?.plan === 'string' ? identity.plan.trim() : '';
   const balance = identity?.walletBalance as {value?:unknown;unit?:unknown} | undefined;
-  if (typeof balance?.value === 'number' && Number.isFinite(balance.value) && balance.value >= 0 &&
+  if (typeof balance?.value === 'number' && Number.isFinite(balance.value) && (balance.value >= 0 || balance.unit === 'USD') &&
       (balance.unit === 'credit' || balance.unit === 'USD' || balance.unit === 'lượt')) {
     return {walletBalance:{value:balance.value,unit:balance.unit}, ...(plan ? {plan} : {})};
   }
