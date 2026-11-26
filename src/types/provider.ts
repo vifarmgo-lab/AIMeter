@@ -55,6 +55,7 @@ export type Credential =
 
 // Account identity information
 export interface Identity {
+  walletBalance?: { value: number; unit: 'credit' | 'USD' | 'lượt' };
   plan?: string;
 }
 

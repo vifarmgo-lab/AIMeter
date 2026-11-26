@@ -75,19 +75,21 @@ function Codex({name,done,lock}:{name:string;done:(text:string)=>void;lock:(v:bo
 }
 
 function Reading({platform,name,done}:{platform:Platform;name:string;done:(v:string)=>void}){
-  const [unit,setUnit]=useState('percent');
+  const [unit,setUnit]=useState(['runninghub','seedance','google-ai','openrouter'].includes(platform.id)?'balance':'percent');
+  const [balanceUnit,setBalanceUnit]=useState(platform.id==='openrouter'?'USD':'credit');
   const [used,setUsed]=useState(''), [total,setTotal]=useState('');
   const [saving,setSaving]=useState(false), [error,setError]=useState('');
   async function save(event:React.FormEvent){
     event.preventDefault();setSaving(true);setError('');
-    try {await request('reading',{platform:platform.id,name,used:Number(used),total:unit==='percent'?100:Number(total)});done('Đã lưu số liệu tự nhập của '+name+'.');}
+    try {await request('reading',{platform:platform.id,name,...(unit==='balance'?{balance:Number(used),unit:balanceUnit}:{used:Number(used),total:unit==='percent'?100:Number(total)})});done('Đã lưu số liệu tự nhập của '+name+'.');}
     catch(e){setError((e as Error).message);}finally{setSaving(false);}
   }
   return <form className="setup-step" onSubmit={save}><p>Dashboard ghi thời điểm anh cập nhật. Lần sau chọn lại cùng tên để cập nhật số mới.</p>
     <label htmlFor="unit">Trang tài khoản hiển thị gì?</label><select id="unit" value={unit} onChange={e=>{setUnit(e.target.value);setUsed('');setTotal('');}}>
-      <option value="percent">Phần trăm đã dùng</option><option value="count">Số đã dùng và tổng hạn mức</option></select>
-    <label htmlFor="used">{unit==='percent'?'Đã dùng (%)':'Số đã dùng'}</label>
+      <option value="balance">Số dư còn lại</option><option value="percent">Phần trăm đã dùng</option><option value="count">Số đã dùng và tổng hạn mức</option></select>
+    <label htmlFor="used">{unit==='balance'?'Số còn lại':unit==='percent'?'Đã dùng (%)':'Số đã dùng'}</label>
     <input id="used" type="number" min="0" max={unit==='percent'?100:total||undefined} step="any" value={used} required onChange={e=>setUsed(e.target.value)}/>
+    {unit==='balance' && <><label htmlFor="balance-unit">Đơn vị</label><select id="balance-unit" value={balanceUnit} onChange={e=>setBalanceUnit(e.target.value)}>{['credit','USD','lượt'].map(v=><option key={v}>{v}</option>)}</select></>}
     {unit==='count' && <><label htmlFor="total">Tổng hạn mức</label><input id="total" type="number" min="0" step="any" value={total} required onChange={e=>setTotal(e.target.value)}/></>}
     <button className="setup-primary" disabled={saving}>{saving?'Đang lưu…':'Lưu số liệu'}</button>
     {error && <p role="alert" className="setup-error">{error}</p>}</form>;
@@ -119,7 +121,8 @@ function Account({platform,done,lock}:{platform:Platform;done:(v:string)=>void;l
   }
   return <div className="setup-form">{platform.hint && <p>{platform.hint}</p>}
     <details><summary>Đặt tên để phân biệt nhiều tài khoản</summary><div className="setup-step">
-      <label htmlFor="alias">Tên trên dashboard</label><input id="alias" maxLength={120} placeholder={platform.label} value={alias} disabled={busy} onChange={e=>setAlias(e.target.value)}/></div></details>
+      <label htmlFor="alias">Tên trên dashboard</label><input id="alias" maxLength={120} placeholder={platform.label} list="account-names" value={alias} disabled={busy} onChange={e=>setAlias(e.target.value)}/>
+      <datalist id="account-names">{(platform.id==='codex'?['ChatGPT Business 1','ChatGPT Business 2','ChatGPT BOD']:platform.id==='grok'?['Grok công ty 1','Grok công ty 2','Grok BOD']:[]).map(v=><option key={v} value={v}/>)}</datalist></div></details>
     {automatic && !manual && (platform.id==='codex'?<Codex name={name} done={done} lock={lock}/>:platform.id==='copilot'?<>
       <CopilotLogin onReady={setCopilot}/>{copilot && error && <button className="setup-primary" disabled={busy} onClick={completeCopilot}>Thử lưu lại</button>}</>:
       <form className="setup-step" onSubmit={saveKey}><p>Trong OpenRouter, chọn <b>Read only</b> khi tạo khóa quản lý cấp tổ chức để đọc số dư.</p>

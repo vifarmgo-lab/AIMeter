@@ -86,9 +86,12 @@ router.post('/device/:id/cancel',(req,res)=>{
 const platforms = new Set(['claude','google-ai','grok','seedance','runninghub','kalodata','openrouter','codex','copilot','aliyun','antigravity','kimi','minimax','zai','ollama','opencode','cursor']);
 const writing = new Set<string>();
 router.post('/reading', async (req,res)=>{
-  const {platform, used, total} = req.body || {};
+  const {platform, used, total, balance, unit} = req.body || {};
   const label=nameOf(req.body?.name);
-  if (!platforms.has(platform) || !label || !Number.isFinite(used) || !Number.isFinite(total) || used<0 || total<=0 || used>total)
+  const balanceOnly = balance !== undefined;
+  const valid = balanceOnly ? Number.isFinite(balance) && balance>=0 && ['credit','USD','lượt'].includes(unit)
+    : Number.isFinite(used) && Number.isFinite(total) && used>=0 && total>0 && used<=total;
+  if (!platforms.has(platform) || !label || !valid)
     return res.status(400).json({message:'Kiểm tra lại tên, số đã dùng và tổng hạn mức.'});
   const name=label+' · '+platform+' · tự nhập';
   if (writing.has(name)) return res.status(409).json({message:'Đang lưu số liệu cho tài khoản này.'});
@@ -96,8 +99,13 @@ router.post('/reading', async (req,res)=>{
   try {
     const found=await storage.getProviderByName(P.WALLET,name);
     const account=found || await storage.createProvider(P.WALLET,{provider:P.WALLET,name,refreshInterval:0,credentials:{type:AuthType.MANUAL,value:'manual'}});
-    const percent=100*(used/total);
-    await storage.recordUsage(account.id,{provider:P.WALLET,progress:[{name:'Đã dùng · tự nhập',used,limit:total,usedPercent:percent,remainingPercent:100-percent}],updatedAt:new Date()});
+    const snapshot:UsageSnapshot = {provider:P.WALLET,progress:[],updatedAt:new Date()};
+    if (balanceOnly) snapshot.identity={walletBalance:{value:balance,unit}};
+    else {
+      const percent=100*(used/total);
+      snapshot.progress=[{name:'Đã dùng · tự nhập',used,limit:total,usedPercent:percent,remainingPercent:100-percent}];
+    }
+    await storage.recordUsage(account.id,snapshot);
     return res.json({saved:true});
   } catch {return res.status(503).json({message:'Chưa lưu được số liệu. Anh có thể thử lại với cùng tên.'});}
   finally {writing.delete(name);}

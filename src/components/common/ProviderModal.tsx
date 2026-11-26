@@ -149,7 +149,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
   const [defaultProgressItem, setDefaultProgressItem] = useState('');
 
   const availableProviders = React.useMemo(
-    () => [...Object.values(UsageProvider)].sort((a, b) => PROVIDER_NAMES[a].localeCompare(PROVIDER_NAMES[b])),
+    () => Object.values(UsageProvider).filter(p => p !== UsageProvider.WALLET).sort((a, b) => PROVIDER_NAMES[a].localeCompare(PROVIDER_NAMES[b])),
     [],
   );
   const availableRegions = selectedProvider ? getRegionsForProvider(selectedProvider) : [];
@@ -1685,6 +1685,8 @@ function getAuthTypesForProvider(provider: UsageProvider): AuthType[] {
 
 function getAuthTypeLabel(authType: AuthType, provider?: UsageProvider): string {
   switch (authType) {
+    case AuthType.DEVICE: return 'Device sign-in';
+    case AuthType.MANUAL: return 'Manual reading';
     case AuthType.COOKIE:
       return 'Browser Cookie';
     case AuthType.API_KEY:
@@ -1698,6 +1700,8 @@ function getAuthTypeLabel(authType: AuthType, provider?: UsageProvider): string 
 
 function getCredentialLabel(authType: AuthType, provider?: UsageProvider): string {
   switch (authType) {
+    case AuthType.DEVICE: return 'Device sign-in';
+    case AuthType.MANUAL: return 'Manual reading';
     case AuthType.COOKIE:
       if (provider === UsageProvider.ALIYUN) {
         return 'Cookie Value';
@@ -1720,6 +1724,8 @@ function getCredentialLabel(authType: AuthType, provider?: UsageProvider): strin
 
 function getCredentialPlaceholder(authType: AuthType, provider?: UsageProvider): string {
   switch (authType) {
+    case AuthType.DEVICE:
+    case AuthType.MANUAL: return '';
     case AuthType.COOKIE:
       if (provider === UsageProvider.ALIYUN) {
         return 'login_current_pk=...; cna=...; login_aliyunid_ticket=...';

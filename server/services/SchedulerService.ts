@@ -49,6 +49,7 @@ class SchedulerService {
     const providers = await storage.listProviders();
 
     for (const provider of providers) {
+      if (provider.credentials.type === 'manual' || provider.refreshInterval === 0) continue;
       const intervalMinutes = resolveIntervalMinutes(provider.refreshInterval);
       const intervalMs = intervalMinutes * 60 * 1000;
       const skipThresholdMs = Math.max(0, intervalMs - 20 * 1000);
@@ -82,7 +83,7 @@ class SchedulerService {
 
   async refreshProvider(providerId: string): Promise<void> {
     const config = await storage.getProvider(providerId);
-    if (!config || config.refreshInterval <= 0) return;
+    if (!config || config.credentials.type === 'manual' || config.refreshInterval <= 0) return;
 
     try {
       const snapshot = await fetchUsageForProvider(config);

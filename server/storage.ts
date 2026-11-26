@@ -143,6 +143,7 @@ function mapDbProvider({ id: _internalId, uid, ...rest }: Omit<ProviderConfig, '
 }
 
 function hasPersistableProgress(snapshot: UsageSnapshot): boolean {
+  if (snapshot.provider === 'wallet' && Number.isFinite(snapshot.identity?.walletBalance?.value)) return true;
   if (Array.isArray(snapshot.progress) && snapshot.progress.length > 0) {
     return true;
   }
