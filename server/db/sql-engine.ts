@@ -89,7 +89,7 @@ function buildProviderAttrs(config: Partial<ProviderConfig>): Record<string, unk
   };
 
   const refreshInterval = Number(config.refreshInterval);
-  if (Number.isFinite(refreshInterval) && refreshInterval > 0) attrs.refreshInterval = refreshInterval;
+  if (config.refreshInterval === 0 || (Number.isFinite(refreshInterval) && refreshInterval > 0)) attrs.refreshInterval = refreshInterval;
   else if (typeof attrs.refreshInterval !== 'number') attrs.refreshInterval = 5;
 
   const displayOrder = Number(config.displayOrder);
@@ -391,7 +391,7 @@ export class SqlEngine implements DatabaseEngine {
 
   private mapProviderRow(row: DbProviderRow): StoredProviderConfig {
     const attrs = parseProviderAttrs(row.attrs);
-    const refreshInterval = readPositiveNumber(attrs.refreshInterval, 5);
+    const refreshInterval = attrs.refreshInterval === 0 ? 0 : readPositiveNumber(attrs.refreshInterval, 5);
     const displayOrder = readPositiveNumber(attrs.displayOrder, 0);
     const credentials = this.parseStoredCredentials(row.key);
     return {
@@ -735,14 +735,15 @@ export class SqlEngine implements DatabaseEngine {
   }
 
   async getLatestUsage(uid: string): Promise<UsageRecordRow | null> {
-    const rows = await this.client.query<DbUsageRow>(
-      `SELECT ur.* FROM ${this.usageTable()} ur
+    const rows = await this.client.query<DbUsageRow & { provider: string }>(
+      `SELECT ur.*, p.provider AS provider FROM ${this.usageTable()} ur
        JOIN ${this.providersTable()} p ON ur.provider_id = p.id
        WHERE p.uid = ? ORDER BY ur.created_at DESC, ur.id DESC LIMIT 50`,
       [uid]
     );
 
     if (rows.length === 0) return null;
+    if (rows[0].provider === 'wallet') return this.mapUsageRow(rows[0]);
     const preferred = rows.find((row) => hasProgressItems(row.progress));
     return this.mapUsageRow(preferred || rows[0]);
   }

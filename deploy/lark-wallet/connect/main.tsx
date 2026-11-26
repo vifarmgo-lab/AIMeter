@@ -64,7 +64,7 @@ function Codex({name,done,lock}:{name:string;done:(text:string)=>void;lock:(v:bo
   },[flow,done,lock]);
   async function cancel(){if(!flow)return;try{await request('device/'+flow.flowId+'/cancel',{});setFlow(undefined);lock(false);}catch(e){setError((e as Error).message);}}
   return <section className="setup-step">{flow ? <>
-    <p>Nhập mã này trên trang chính thức của OpenAI. Wallet sẽ tự lưu sau khi anh xác nhận.</p>
+    <p>Mã này đăng nhập Codex trên VPS. Nhập mã trên trang OpenAI bằng đúng tài khoản anh muốn theo dõi. Wallet tự lưu sau khi anh xác nhận.</p>
     <div className="setup-links"><strong className="device-code">{flow.code}</strong>
       <button onClick={async()=>{try{await navigator.clipboard.writeText(flow.code);setCopied(true);}catch{setError('Anh chọn mã và sao chép bằng tay.');}}}>{copied?'Đã sao chép':'Sao chép mã'}</button></div>
     <a className="setup-primary" href={flow.url} target="_blank" rel="noreferrer">Mở OpenAI để xác nhận ↗</a>

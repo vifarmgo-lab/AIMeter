@@ -476,6 +476,7 @@ export const Dashboard: React.FC = () => {
     });
   };
 
+  const walletSetup = !canCreate && Boolean(document.querySelector('meta[name="aimeter-connect"][content="/connect"]'));
   if (loading && usages.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -497,7 +498,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-3">
-          {!canCreate && document.querySelector('meta[name="aimeter-connect"][content="/connect"]') && (
+          {walletSetup && (
             <a href="/connect" target="_blank" rel="noopener noreferrer" className="btn-primary h-10 w-full justify-center px-3 sm:h-auto sm:w-auto sm:px-5">
               Thêm tài khoản
             </a>
@@ -568,11 +569,12 @@ export const Dashboard: React.FC = () => {
             </svg>
           </div>
           <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-1">
-            No providers configured
+            {walletSetup ? 'Chưa có tài khoản AI' : 'No providers configured'}
           </h2>
           <p className="text-sm text-[var(--color-text-tertiary)] text-center max-w-sm mb-6">
-            Add your AI provider credentials to start tracking usage.
+            {walletSetup ? 'Chọn nền tảng để kết nối hoặc ghi số liệu đầu tiên.' : 'Add your AI provider credentials to start tracking usage.'}
           </p>
+          {walletSetup && <a href="/connect" target="_blank" rel="noopener noreferrer" className="btn-primary">Thêm tài khoản AI</a>}
           {canCreate && (
           <button onClick={handleAddProvider} className="btn-primary" disabled={!canCreate}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
